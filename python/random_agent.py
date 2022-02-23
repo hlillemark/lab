@@ -19,9 +19,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import os.path as osp
 import argparse
 import random
 import numpy as np
+from tqdm import tqdm
 import six
 
 import deepmind_lab
@@ -36,16 +39,16 @@ class DiscretizedRandomAgent(object):
 
   ACTIONS = {
       'look_left': _action(-20, 0, 0, 0, 0, 0, 0),
-      'look_right': _action(20, 0, 0, 0, 0, 0, 0),
-      'look_up': _action(0, 10, 0, 0, 0, 0, 0),
-      'look_down': _action(0, -10, 0, 0, 0, 0, 0),
-      'strafe_left': _action(0, 0, -1, 0, 0, 0, 0),
-      'strafe_right': _action(0, 0, 1, 0, 0, 0, 0),
-      'forward': _action(0, 0, 0, 1, 0, 0, 0),
-      'backward': _action(0, 0, 0, -1, 0, 0, 0),
-      'fire': _action(0, 0, 0, 0, 1, 0, 0),
-      'jump': _action(0, 0, 0, 0, 0, 1, 0),
-      'crouch': _action(0, 0, 0, 0, 0, 0, 1)
+     # 'look_right': _action(20, 0, 0, 0, 0, 0, 0),
+     # 'look_up': _action(0, 10, 0, 0, 0, 0, 0),
+     # 'look_down': _action(0, -10, 0, 0, 0, 0, 0),
+     # 'strafe_left': _action(0, 0, -1, 0, 0, 0, 0),
+     # 'strafe_right': _action(0, 0, 1, 0, 0, 0, 0),
+     # 'forward': _action(0, 0, 0, 1, 0, 0, 0),
+     # 'backward': _action(0, 0, 0, -1, 0, 0, 0),
+     # 'fire': _action(0, 0, 0, 0, 1, 0, 0),
+     # 'jump': _action(0, 0, 0, 0, 0, 1, 0),
+     # 'crouch': _action(0, 0, 0, 0, 0, 0, 1)
   }
 
   ACTION_LIST = list(six.viewvalues(ACTIONS))
@@ -137,6 +140,29 @@ class SpringAgent(object):
     self.action = np.zeros([len(self.action_spec)])
 
 
+def sample_trajectory(env, agent, length, name, skip=10):
+  env.reset()
+  frames = []
+  for t in six.moves.range(length + skip):
+    if not env.is_running():
+      print('Environment stopped early')
+      env.reset()
+      agent.reset()
+    obs = env.observations()
+    if t >= skip:
+        frames.append(obs['RGB_INTERLEAVED'].copy())
+    action = agent.step(0., obs['RGB_INTERLEAVED'])
+    env.step(action, num_steps=5)
+  video = np.stack(frames, axis=0)
+  filepath = osp.join(args.output_dir, f'{name}.npz')
+  np.savez(filepath, video=video)
+
+
+def sample_trajectories(n, env, agent, length):
+    for i in tqdm(range(n), total=n):
+        sample_trajectory(env, agent, length, i)
+
+
 def run(length, width, height, fps, level, record, demo, demofiles, video):
   """Spins up an environment and runs the random agent."""
   config = {
@@ -152,44 +178,33 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
     config['demofiles'] = demofiles
   if video:
     config['video'] = video
+
+  os.makedirs(args.output_dir, exist_ok=True)
+
   env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED'], config=config)
-
-  env.reset()
-
-  # Starts the random spring agent. As a simpler alternative, we could also
-  # use DiscretizedRandomAgent().
-  agent = SpringAgent(env.action_spec())
-
-  reward = 0
-
-  for _ in six.moves.range(length):
-    if not env.is_running():
-      print('Environment stopped early')
-      env.reset()
-      agent.reset()
-    obs = env.observations()
-    action = agent.step(reward, obs['RGB_INTERLEAVED'])
-    reward = env.step(action, num_steps=1)
-
-  print('Finished after %i steps. Total reward received is %f'
-        % (length, agent.rewards))
+  agent = DiscretizedRandomAgent()
+  sample_trajectories(args.n_traj, env, agent, length)
 
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description=__doc__)
-  parser.add_argument('--length', type=int, default=1000,
+  parser.add_argument('--length', type=int, default=100,
                       help='Number of steps to run the agent')
-  parser.add_argument('--width', type=int, default=80,
+  parser.add_argument('--width', type=int, default=64,
                       help='Horizontal size of the observations')
-  parser.add_argument('--height', type=int, default=80,
+  parser.add_argument('--height', type=int, default=64,
                       help='Vertical size of the observations')
-  parser.add_argument('--fps', type=int, default=60,
+  parser.add_argument('--fps', type=int, default=30,
                       help='Number of frames per second')
   parser.add_argument('--runfiles_path', type=str, default=None,
                       help='Set the runfiles path to find DeepMind Lab data')
   parser.add_argument('--level_script', type=str,
-                      default='tests/empty_room_test',
+                      default='demos/random_maze',
                       help='The environment level script to load')
+  parser.add_argument('--n_traj', type=int, default=64)
+  parser.add_argument('--output_dir', type=str, default='/shared/wilson/datasets/dl_maze')
+
+
   parser.add_argument('--record', type=str, default=None,
                       help='Record the run to a demo file')
   parser.add_argument('--demo', type=str, default=None,
