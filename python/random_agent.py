@@ -39,7 +39,7 @@ class DiscretizedRandomAgent(object):
 
   ACTIONS = {
       'look_left': _action(-20, 0, 0, 0, 0, 0, 0),
-     # 'look_right': _action(20, 0, 0, 0, 0, 0, 0),
+      'look_right': _action(20, 0, 0, 0, 0, 0, 0),
      # 'look_up': _action(0, 10, 0, 0, 0, 0, 0),
      # 'look_down': _action(0, -10, 0, 0, 0, 0, 0),
      # 'strafe_left': _action(0, 0, -1, 0, 0, 0, 0),
@@ -53,9 +53,15 @@ class DiscretizedRandomAgent(object):
 
   ACTION_LIST = list(six.viewvalues(ACTIONS))
 
-  def step(self, unused_reward, unused_image):
+  def step(self, timestep, unused_image):
     """Gets an image state and a reward, returns an action."""
-    return random.choice(DiscretizedRandomAgent.ACTION_LIST)
+    if timestep < 30:
+        return DiscretizedRandomAgent.ACTIONS['look_left'], 0
+
+    if timestep % 5 == 0:
+        self.a = random.choice(['look_left', 'look_right'])
+        self.idx = 0 if self.a == 'look_left' else 1
+    return DiscretizedRandomAgent.ACTIONS[self.a], self.idx
 
 
 class SpringAgent(object):
@@ -143,19 +149,22 @@ class SpringAgent(object):
 def sample_trajectory(env, agent, length, name, skip=10):
   env.reset()
   frames = []
+  actions = []
   for t in six.moves.range(length + skip):
     if not env.is_running():
       print('Environment stopped early')
       env.reset()
       agent.reset()
     obs = env.observations()
+    action, idx = agent.step(t, obs['RGB_INTERLEAVED'])
     if t >= skip:
         frames.append(obs['RGB_INTERLEAVED'].copy())
-    action = agent.step(0., obs['RGB_INTERLEAVED'])
+        actions.append(idx)
     env.step(action, num_steps=5)
   video = np.stack(frames, axis=0)
+  actions = np.array(actions).astype(int)
   filepath = osp.join(args.output_dir, f'{name}.npz')
-  np.savez(filepath, video=video)
+  np.savez(filepath, video=video, actions=actions)
 
 
 def sample_trajectories(n, env, agent, length):
