@@ -21,6 +21,7 @@ local log = require 'common.log'
 local random = require 'common.random'
 local make_map = require 'common.make_map'
 local pickups = require 'common.pickups'
+local debug_observations = require 'decorators.debug_observations'
 local custom_observations = require 'decorators.custom_observations'
 local setting_overrides = require 'decorators.setting_overrides'
 
@@ -125,6 +126,8 @@ function api:start(episode, seed, params)
       mapEntityLayer = maze:entityLayer(),
       mapVariationsLayer = maze:variationsLayer()
   }
+
+  debug_observations.setMaze(maze)
 end
 
 function api:nextMap()

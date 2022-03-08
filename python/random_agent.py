@@ -26,6 +26,7 @@ import random
 import numpy as np
 from tqdm import tqdm
 import six
+from PIL import Image
 
 import deepmind_lab
 
@@ -158,6 +159,8 @@ def sample_trajectory(env, agent, length, name, skip=10):
     obs = env.observations()
     action, idx = agent.step(t, obs['RGB_INTERLEAVED'])
     if t >= skip:
+        print(obs['DEBUG.POS.TRANS'], obs['DEBUG.POS.ROT'], obs['DEBUG.CAMERA_INTERLEAVED.TOP_DOWN'].shape)
+        print(obs['DEBUG.MAZE.LAYOUT'])
         frames.append(obs['RGB_INTERLEAVED'].copy())
         actions.append(idx)
     env.step(action, num_steps=5)
@@ -190,7 +193,7 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
 
   os.makedirs(args.output_dir, exist_ok=True)
 
-  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED'], config=config)
+  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEBUG.POS.TRANS', 'DEBUG.POS.ROT', 'DEBUG.CAMERA_INTERLEAVED.TOP_DOWN', 'DEBUG.MAZE.LAYOUT'], config=config)
   agent = DiscretizedRandomAgent()
   sample_trajectories(args.n_traj, env, agent, length)
 
