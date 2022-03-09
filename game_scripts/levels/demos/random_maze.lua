@@ -114,9 +114,9 @@ function api:start(episode, seed, params)
         if distance > 5 then
             maze:setEntityCell(row, col, 'P')
         end
-        if 0 < distance and distance < 5 then
-            maze:setEntityCell(row, col, 'A')
-        end
+--        if 0 < distance and distance < 5 then
+--            maze:setEntityCell(row, col, 'A')
+--        end
       end
   }
 

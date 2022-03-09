@@ -61,7 +61,7 @@ class DiscretizedRandomAgent(object):
 
     if timestep % 5 == 0:
         self.a = random.choice(['look_left', 'look_right'])
-        self.idx = 0 if self.a == 'look_left' else 1
+        self.idx = dict(look_left=0, look_right=1)[self.a]
     return DiscretizedRandomAgent.ACTIONS[self.a], self.idx
 
 
@@ -147,6 +147,41 @@ class SpringAgent(object):
     self.action = np.zeros([len(self.action_spec)])
 
 
+class Maze:
+    WALL_SYMBOL = '*'
+    MAZE_CELL_SIZE = 100
+
+    def __init__(self, maze_str):
+        maze_str = maze_str.strip()
+        lines = maze_str.split('\n')
+
+        height = len(lines)
+        width = 0
+        for line in lines:
+            width = max(width, len(line))
+        print(height, width)
+
+        maze = np.zeros((width, height), dtype=np.int32)
+
+        for j, line in enumerate(lines):
+            for i, cell in enumerate(line):
+                if cell == self.WALL_SYMBOL:
+                    maze[i, j] = 1
+        self.maze = maze
+
+    def to_world_coord(self, x, y):
+        maze = self.maze
+        y = maze.shape[1] - y - 1
+        return (float(x) + 0.5) * self.MAZE_CELL_SIZE, (float(y) + 0.5) * self.MAZE_CELL_SIZE
+
+    def to_maze_coord(self, x, y):
+        maze = self.maze
+        x = int(x / self.MAZE_CELL_SIZE + 1)
+        y = int(y / self.MAZE_CELL_SIZE)
+        y = maze.shape[1] - y - 1
+        return x, y
+
+
 def sample_trajectory(env, agent, length, name, skip=10):
   env.reset()
   frames = []
@@ -158,9 +193,8 @@ def sample_trajectory(env, agent, length, name, skip=10):
       agent.reset()
     obs = env.observations()
     action, idx = agent.step(t, obs['RGB_INTERLEAVED'])
+
     if t >= skip:
-        print(obs['DEBUG.POS.TRANS'], obs['DEBUG.POS.ROT'], obs['DEBUG.CAMERA_INTERLEAVED.TOP_DOWN'].shape)
-        print(obs['DEBUG.MAZE.LAYOUT'])
         frames.append(obs['RGB_INTERLEAVED'].copy())
         actions.append(idx)
     env.step(action, num_steps=5)

@@ -1050,6 +1050,13 @@ py_binary(
     deps = [":python_random_agent_lib"],
 )
 
+py_binary(
+    name = "python_random_agent_traverse",
+    srcs = ["python/random_agent_traverse.py"],
+    main = "python/random_agent_traverse.py",
+    deps = [":python_random_agent_lib"],
+)
+
 py_library(
     name = "python_random_agent_lib",
     srcs = ["python/random_agent.py"],
