@@ -116,7 +116,7 @@ class GoalAgent(object):
 
 
     def step(self, timestep, pos, rot, target):
-        if timestep < 10:
+        if timestep < 20:
             return self.ACTIONS['look_left'], 0
 
         action = self.move_to_target(pos, rot, target)
@@ -205,7 +205,7 @@ class Maze:
         return np.array(landmarks)
 
 
-def sample_trajectory(env, agent, length, name, goal_dist, fail_threshold, skip=10):
+def sample_trajectory(env, agent, length, name, goal_dist, skip=10):
   env.reset()
   frames = []
   #top_down = []
@@ -219,15 +219,13 @@ def sample_trajectory(env, agent, length, name, goal_dist, fail_threshold, skip=
   cur_idx = 0
   path = maze.sample_goal_path(pos[0], pos[1], goal_dist)
 
-  for t in itertools.count():
+  for t in range(length + skip):
     obs = env.observations()
     pos = obs['DEBUG.POS.TRANS']
     rot = obs['DEBUG.POS.ROT']
     if np.linalg.norm(pos[:2] - path[cur_idx]) <= 10:
-        cur_idx += 1
+        cur_idx = (cur_idx + 1) % len(path)
 
-    if cur_idx >= len(path):
-        break
     action, idx = agent.step(t, pos, rot, path[cur_idx])
 
     if t >= skip:
@@ -236,31 +234,21 @@ def sample_trajectory(env, agent, length, name, goal_dist, fail_threshold, skip=
         actions.append(idx)
     env.step(action, num_steps=1)
 
-    if t >= fail_threshold:
-        return False
-
   video = np.stack(frames, axis=0)
   #top_down = np.stack(top_down, axis=0)
   actions = np.array(actions).astype(int)
   filepath = osp.join(args.output_dir, f'{name}.npz')
   np.savez(filepath, video=video, actions=actions)
-  return True
 
 
-def sample_trajectories(n, env, agent, length, goal_dist, fail_threshold):
+def sample_trajectories(n, env, agent, length, goal_dist):
     i = 0
     pbar = tqdm(total=n)
-    n_failed = 0
     while i < n:
-        success = sample_trajectory(env, agent, length, i, goal_dist, fail_threshold)
-        if success:
-            pbar.update(1)
-            i += 1
-        else:
-            n_failed += 1
-            print('Failed trajectory')
+        success = sample_trajectory(env, agent, length, i, goal_dist)
+        pbar.update(1)
+        i += 1
     pbar.close()
-    print('Failed', n_failed)
 
 
 def run(length, width, height, fps, level, record, demo, demofiles, video):
@@ -284,7 +272,7 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
   # DEBUG.CAMERA_INTERLEAVED.TOP_DOWN
   env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEBUG.POS.TRANS', 'DEBUG.POS.ROT', 'DEBUG.MAZE.LAYOUT'], config=config)
   agent = GoalAgent()
-  sample_trajectories(args.n_traj, env, agent, length, args.goal_dist, args.fail_threshold)
+  sample_trajectories(args.n_traj, env, agent, length, args.goal_dist)
 
 
 if __name__ == '__main__':
@@ -295,9 +283,8 @@ if __name__ == '__main__':
                       help='Horizontal size of the observations')
   parser.add_argument('--height', type=int, default=64,
                       help='Vertical size of the observations')
-  parser.add_argument('--goal_dist', type=int, default=2,
+  parser.add_argument('--goal_dist', type=int, default=1,
                       help='Sample goal # steps away')
-  parser.add_argument('--fail_threshold', type=int, default=500)
   parser.add_argument('--fps', type=int, default=30,
                       help='Number of frames per second')
   parser.add_argument('--runfiles_path', type=str, default=None,

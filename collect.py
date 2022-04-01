@@ -7,7 +7,7 @@ import multiprocessing as mp
 def worker(i, args):
     output_dir = osp.join(args.data_path, f'{i}')
     n_traj = args.n_traj // args.n_parallel + (i < (args.n_traj % args.n_parallel))
-    cmd = f'bazel run :python_random_agent -- --length {args.length} --width {args.width} --height {args.height} --fps {args.fps} --output_dir {output_dir} --n_traj {n_traj}'
+    cmd = f'bazel run :python_random_agent_traverse -- --length {args.length} --width {args.width} --height {args.height} --fps {args.fps} --output_dir {output_dir} --n_traj {n_traj}'
     os.system(cmd)
 
 

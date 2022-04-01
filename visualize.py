@@ -45,6 +45,9 @@ videos = []
 for f in files:
     video = np.load(f)['video']
     videos.append(video)
+max_len = max([v.shape[0] for v in videos])
+videos = [np.pad(v, ((0, max_len - v.shape[0]), (0, 0), (0, 0), (0, 0))) for v in videos]
+print([v.shape for v in videos])
 videos = np.stack(videos, axis=0)
 print(videos.shape)
 save_video_grid(videos, fname='viz.gif', fps=10)
