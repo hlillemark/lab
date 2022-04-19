@@ -38,8 +38,8 @@ def _action(*entries):
 
 class GoalAgent(object):
     ACTIONS = {
-        'look_left': _action(-40, 0, 0, 0, 0, 0, 0),
-        'look_right': _action(40, 0, 0, 0, 0, 0, 0),
+        'look_left': _action(-20, 0, 0, 0, 0, 0, 0),
+        'look_right': _action(20, 0, 0, 0, 0, 0, 0),
         'forward': _action(0, 0, 0, 1, 0, 0, 0),
         'look_left_forward': _action(-20, 0, 0, 1, 0, 0, 0),
         'look_right_forward': _action(20, 0, 0, 1, 0, 0, 0)
@@ -108,7 +108,7 @@ class GoalAgent(object):
             angle = -180 + angle
 
         turn_dir = self._get_rotation(rot[1], angle)
-        if abs(rot[1] - angle) < 10:
+        if abs(rot[1] - angle) < 10 or abs(rot[1] - 360 - angle) < 10 or abs(rot[1] + 360 - angle) < 10:
             action = f'{turn_dir}_forward'
         else:
             action = turn_dir
@@ -116,7 +116,7 @@ class GoalAgent(object):
 
 
     def step(self, timestep, pos, rot, target):
-        if timestep < 20:
+        if timestep < 40:
             return self.ACTIONS['look_left'], 0
 
         action = self.move_to_target(pos, rot, target)
@@ -232,7 +232,7 @@ def sample_trajectory(env, agent, length, name, goal_dist, skip=10):
         frames.append(obs['RGB_INTERLEAVED'].copy())
         #top_down.append(obs['DEBUG.CAMERA_INTERLEAVED.TOP_DOWN'].copy())
         actions.append(idx)
-    env.step(action, num_steps=1)
+    env.step(action, num_steps=4)
 
   video = np.stack(frames, axis=0)
   #top_down = np.stack(top_down, axis=0)

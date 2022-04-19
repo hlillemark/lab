@@ -56,10 +56,10 @@ class DiscretizedRandomAgent(object):
 
   def step(self, timestep, unused_image):
     """Gets an image state and a reward, returns an action."""
-    if timestep < 30:
+    if timestep < 90:
         return DiscretizedRandomAgent.ACTIONS['look_left'], 0
 
-    if timestep % 5 == 0:
+    if timestep % 15 == 0:
         self.a = random.choice(['look_left', 'look_right'])
         self.idx = dict(look_left=0, look_right=1)[self.a]
     return DiscretizedRandomAgent.ACTIONS[self.a], self.idx
@@ -182,7 +182,7 @@ class Maze:
         return x, y
 
 
-def sample_trajectory(env, agent, length, name, skip=10):
+def sample_trajectory(env, agent, length, name, skip=30):
   env.reset()
   frames = []
   actions = []
@@ -197,7 +197,7 @@ def sample_trajectory(env, agent, length, name, skip=10):
     if t >= skip:
         frames.append(obs['RGB_INTERLEAVED'].copy())
         actions.append(idx)
-    env.step(action, num_steps=5)
+    env.step(action, num_steps=2)
   video = np.stack(frames, axis=0)
   actions = np.array(actions).astype(int)
   filepath = osp.join(args.output_dir, f'{name}.npz')

@@ -41,6 +41,8 @@ files = glob.glob(osp.join(args.data_path, '**', '*.npz'), recursive=True)
 random.shuffle(files)
 
 data = np.load(files[0])
-video, top_down = data['video'], data['top_down']
-videos = np.stack((video, top_down), axis=0)
-save_video_grid(videos, fname='viz.gif', fps=10)
+#video, top_down = data['video'], data['top_down']
+videos  = data['video']
+print(video.shape)
+#videos = np.stack((video, top_down), axis=0)
+save_video_grid(videos, fname='viz.gif', fps=5)
