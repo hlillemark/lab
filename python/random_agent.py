@@ -248,7 +248,7 @@ if __name__ == '__main__':
                       default='demos/random_maze',
                       help='The environment level script to load')
   parser.add_argument('--n_traj', type=int, default=64)
-  parser.add_argument('--output_dir', type=str, default='/shared/wilson/datasets/dl_maze')
+  parser.add_argument('--output_dir', type=str, default='datasets/dl_maze')
 
 
   parser.add_argument('--record', type=str, default=None,

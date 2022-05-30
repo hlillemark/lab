@@ -153,7 +153,7 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
     config['demofiles'] = demofiles
   if video:
     config['video'] = video
-  env = deepmind_lab.Lab(level, ['RGBD_INTERLEAVED', 'DEPTH'], config=config)
+  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH'], config=config)
 
   env.reset()
 
@@ -171,15 +171,11 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
       agent.reset()
     obs = env.observations()
 
-    depth_float = obs['DEPTH'][:, :, 0]
-    depth_byte = obs['RGBD_INTERLEAVED'][:, :, -1] / 255.
-    print(depth_float.min(), depth_float.max())
-    print(depth_byte.min(), depth_byte.max())
-    print(np.max(np.abs(depth_float - depth_byte)))
-
-    rgb_frames.append(np.copy(obs['RGBD_INTERLEAVED'])[:, :, :3])
-    depth_frames.append(np.copy(obs['DEPTH']))
-    action = agent.step(reward, obs['RGBD_INTERLEAVED'])
+    rgb_frames.append(obs['RGB_INTERLEAVED'])
+    depth = obs['DEPTH']
+    depth = (depth - depth.min()) / (depth.max() - depth.min())
+    depth_frames.append((depth * 255).astype(np.uint8))
+    action = agent.step(reward, obs['RGB_INTERLEAVED'])
     reward = env.step(action, num_steps=1)
   rgb_frames = np.stack(rgb_frames)
   depth_frames = np.stack(depth_frames)
@@ -193,11 +189,11 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description=__doc__)
-  parser.add_argument('--length', type=int, default=200,
+  parser.add_argument('--length', type=int, default=100,
                       help='Number of steps to run the agent')
-  parser.add_argument('--width', type=int, default=80,
+  parser.add_argument('--width', type=int, default=512,
                       help='Horizontal size of the observations')
-  parser.add_argument('--height', type=int, default=80,
+  parser.add_argument('--height', type=int, default=512,
                       help='Vertical size of the observations')
   parser.add_argument('--fps', type=int, default=60,
                       help='Number of frames per second')
