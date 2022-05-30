@@ -131,6 +131,7 @@ typedef enum EnvCApi_EnvironmentStatus_enum EnvCApi_EnvironmentStatus;
 // The fundamental data type of an observation; part of the observation spec.
 enum EnvCApi_ObservationType_enum {
   EnvCApi_ObservationDoubles,
+  EnvCApi_ObservationFloats,
   EnvCApi_ObservationBytes,
   EnvCApi_ObservationString
 };

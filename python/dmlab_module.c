@@ -435,6 +435,8 @@ static int ObservationType2typenum(EnvCApi_ObservationType type) {
   switch (type) {
     case EnvCApi_ObservationDoubles:
       return NPY_DOUBLE;
+    case EnvCApi_ObservationFloats:
+      return NPY_FLOAT;
     case EnvCApi_ObservationBytes:
       return NPY_UINT8;
     case EnvCApi_ObservationString:

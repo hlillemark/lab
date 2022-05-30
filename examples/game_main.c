@@ -208,6 +208,9 @@ static void print_observation(const EnvCApi_Observation* obs) {
       }
       fputs(">", stdout);
       break;
+    case EnvCApi_ObservationFloats:
+      fpus("<FloatTenso ", stdout);
+      break;
     case EnvCApi_ObservationBytes:
       fputs("<ByteTensor ", stdout);
       for (int i = 0; i < obs->spec.dims; ++i) {

@@ -170,6 +170,8 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
       env.reset()
       agent.reset()
     obs = env.observations()
+    print(obs['DEPTH'].min(), obs['DEPTH'].max())
+    print(obs['DEPTH'].shape, obs['DEPTH'].dtype)
     rgb_frames.append(np.copy(obs['RGB_INTERLEAVED']))
     depth_frames.append(np.copy(obs['DEPTH']))
     action = agent.step(reward, obs['RGB_INTERLEAVED'])

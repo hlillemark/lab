@@ -220,7 +220,7 @@ static void create_update_pbo_or_die(GameContext* gc) {
     qglBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
   }
 
-  int depth_pbo_size = gc->width * gc->height;
+  int depth_pbo_size = gc->width * gc->height * 4;
   if (gc->pbos.depth.size < depth_pbo_size) {
     qglBindBuffer(GL_PIXEL_PACK_BUFFER, gc->pbos.depth.id);
     qglBufferData(GL_PIXEL_PACK_BUFFER, depth_pbo_size, NULL, GL_STREAM_READ);
@@ -253,7 +253,7 @@ static void request_pixel_observations(GameContext* gc,
       case kPixelBufferTypeEnum_Depth:
         qglBindBuffer(GL_PIXEL_PACK_BUFFER, gc->pbos.depth.id);
         qglReadPixels(0, 0, gc->width, gc->height, GL_DEPTH_COMPONENT,
-                      GL_UNSIGNED_BYTE, 0);
+                      GL_FLOAT, 0);
         break;
     }
     qglBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
@@ -289,7 +289,7 @@ static void* bind_pixel_observation(GameContext* gc, PixelBufferTypeEnum type) {
         break;
       case kPixelBufferTypeEnum_Depth:
         qglReadPixels(0, 0, gc->width, gc->height, GL_DEPTH_COMPONENT,
-                      GL_UNSIGNED_BYTE, gc->temp_buffer);
+                      GL_FLOAT, gc->temp_buffer);
         break;
     }
 
@@ -967,9 +967,11 @@ static void dmlab_observation_spec(
         gc->image_shape[2] = gc->width;
         break;
       case kObservations_Depth:
+        spec->type = EnvCApi_ObservationFloats;
         gc->image_shape[0] = gc->height;
         gc->image_shape[1] = gc->width;
         gc->image_shape[2] = 1;
+        break;
     }
   } else {
     DeepmindContext* ctx = gc->dm_ctx;
@@ -1082,7 +1084,7 @@ static void dmlab_observation(
         break;
       }
       case kObservations_Depth: {
-        gc->image_buffer = realloc_or_die(gc->image_buffer, window_size * 1);
+        gc->image_buffer = realloc_or_die(gc->image_buffer, window_size * 4);
         break;
       }
     }
@@ -1107,8 +1109,11 @@ static void dmlab_observation(
         case kObservations_Depth:
           for (int i = 0; i < height; ++i) {
             for (int j = 0; j < width; ++j) {
-              int loc = i * width + j;
-              image_buffer[loc] = temp_buffer[loc];
+              int loc = (i * width + j) * 4;
+              image_buffer[loc + 0] = temp_buffer[loc + 0];
+              image_buffer[loc + 1] = temp_buffer[loc + 1];
+              image_buffer[loc + 2] = temp_buffer[loc + 2];
+              image_buffer[loc + 3] = temp_buffer[loc + 3];
             }
           }
           break;
