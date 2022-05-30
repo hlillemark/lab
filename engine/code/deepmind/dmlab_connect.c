@@ -120,7 +120,8 @@ const char* const kObservationNames[] = {
 typedef enum PixelBufferTypeEnum_e {
   kPixelBufferTypeEnum_Rgb,
   kPixelBufferTypeEnum_Bgr,
-  kPixelBufferTypeEnum_Depth,
+  kPixelBufferTypeEnum_DepthByte,
+  kPixelBufferTypeEnum_DepthFloat
 } PixelBufferTypeEnum;
 
 typedef struct PboData_s {
@@ -250,7 +251,12 @@ static void request_pixel_observations(GameContext* gc,
         qglReadPixels(0, 0, gc->width, gc->height, GL_BGR_EXT, GL_UNSIGNED_BYTE,
                       0);
         break;
-      case kPixelBufferTypeEnum_Depth:
+      case kPixelBufferTypeEnum_DepthByte:
+        qglBindBuffer(GL_PIXEL_PACK_BUFFER, gc->pbos.depth.id);
+        qglReadPixels(0, 0, gc->width, gc->height, GL_DEPTH_COMPONENT,
+                      GL_UNSIGNED_BYTE, 0);
+        break;
+      case kPixelBufferTypeEnum_DepthFloat:
         qglBindBuffer(GL_PIXEL_PACK_BUFFER, gc->pbos.depth.id);
         qglReadPixels(0, 0, gc->width, gc->height, GL_DEPTH_COMPONENT,
                       GL_FLOAT, 0);
@@ -268,7 +274,8 @@ static void* bind_pixel_observation(GameContext* gc, PixelBufferTypeEnum type) {
       case kPixelBufferTypeEnum_Bgr:
         qglBindBuffer(GL_PIXEL_PACK_BUFFER, gc->pbos.rgb.id);
         break;
-      case kPixelBufferTypeEnum_Depth:
+      case kPixelBufferTypeEnum_DepthByte:
+      case kPixelBufferTypeEnum_DepthFloat:
         qglBindBuffer(GL_PIXEL_PACK_BUFFER, gc->pbos.depth.id);
         break;
     }
@@ -277,7 +284,7 @@ static void* bind_pixel_observation(GameContext* gc, PixelBufferTypeEnum type) {
     return pixel_buffer;
   } else {
     gc->temp_buffer =
-        realloc_or_die(gc->temp_buffer, gc->width * gc->height * 3);
+        realloc_or_die(gc->temp_buffer, gc->width * gc->height * 4);
     switch (type) {
       case kPixelBufferTypeEnum_Rgb:
         qglReadPixels(0, 0, gc->width, gc->height, GL_RGB, GL_UNSIGNED_BYTE,
@@ -287,7 +294,11 @@ static void* bind_pixel_observation(GameContext* gc, PixelBufferTypeEnum type) {
         qglReadPixels(0, 0, gc->width, gc->height, GL_BGR_EXT, GL_UNSIGNED_BYTE,
                       gc->temp_buffer);
         break;
-      case kPixelBufferTypeEnum_Depth:
+      case kPixelBufferTypeEnum_DepthByte:
+        qglReadPixels(0, 0, gc->width, gc->height, GL_DEPTH_COMPONENT,
+                      GL_UNSIGNED_BYTE, gc->temp_buffer);
+        break;
+      case kPixelBufferTypeEnum_DepthFloat:
         qglReadPixels(0, 0, gc->width, gc->height, GL_DEPTH_COMPONENT,
                       GL_FLOAT, gc->temp_buffer);
         break;
@@ -1023,10 +1034,13 @@ static void dmlab_observation(
         (observation_idx == kObservations_BgrdInterleaved ||
          observation_idx == kObservations_BgrInterleaved) ?
             kPixelBufferTypeEnum_Bgr : kPixelBufferTypeEnum_Rgb;
+    const enum PixelBufferTypeEnum_e depthBufferType = 
+        observation_idx == kObservations_Depth ?
+            kPixelBufferTypeEnum_DepthFloat : kPixelBufferTypeEnum_DepthByte;
 
     request_pixel_observations(gc, pixelBufferType);
     if (render_depth) {
-      request_pixel_observations(gc, kPixelBufferTypeEnum_Depth);
+      request_pixel_observations(gc, depthBufferType);
     }
 
     byte* temp_buffer = bind_pixel_observation(gc, pixelBufferType);
@@ -1092,7 +1106,7 @@ static void dmlab_observation(
 
     if (render_depth) {
       unsigned char* const image_buffer = gc->image_buffer;
-      temp_buffer = bind_pixel_observation(gc, kPixelBufferTypeEnum_Depth);
+      temp_buffer = bind_pixel_observation(gc, depthBufferType);
       switch (observation_idx) {
         case kObservations_RgbdInterlaced:
         case kObservations_RgbdInterleaved:
@@ -1109,11 +1123,16 @@ static void dmlab_observation(
         case kObservations_Depth:
           for (int i = 0; i < height; ++i) {
             for (int j = 0; j < width; ++j) {
-              int loc = (i * width + j) * 4;
-              image_buffer[loc + 0] = temp_buffer[loc + 0];
-              image_buffer[loc + 1] = temp_buffer[loc + 1];
-              image_buffer[loc + 2] = temp_buffer[loc + 2];
-              image_buffer[loc + 3] = temp_buffer[loc + 3];
+              if (depthBufferType == kPixelBufferTypeEnum_DepthFloat) {
+                int loc = (i * width + j) * 4;
+                image_buffer[loc + 0] = temp_buffer[loc + 0];
+                image_buffer[loc + 1] = temp_buffer[loc + 1];
+                image_buffer[loc + 2] = temp_buffer[loc + 2];
+                image_buffer[loc + 3] = temp_buffer[loc + 3];
+              } else {
+                int loc = i * width + j;
+                image_buffer[loc] = temp_buffer[loc];
+              }
             }
           }
           break;

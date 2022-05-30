@@ -153,7 +153,7 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
     config['demofiles'] = demofiles
   if video:
     config['video'] = video
-  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH'], config=config)
+  env = deepmind_lab.Lab(level, ['RGBD_INTERLEAVED', 'DEPTH'], config=config)
 
   env.reset()
 
@@ -170,11 +170,16 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
       env.reset()
       agent.reset()
     obs = env.observations()
-    print(obs['DEPTH'].min(), obs['DEPTH'].max())
-    print(obs['DEPTH'].shape, obs['DEPTH'].dtype)
-    rgb_frames.append(np.copy(obs['RGB_INTERLEAVED']))
+
+    depth_float = obs['DEPTH'][:, :, 0]
+    depth_byte = obs['RGBD_INTERLEAVED'][:, :, -1] / 255.
+    print(depth_float.min(), depth_float.max())
+    print(depth_byte.min(), depth_byte.max())
+    print(np.max(np.abs(depth_float - depth_byte)))
+
+    rgb_frames.append(np.copy(obs['RGBD_INTERLEAVED'])[:, :, :3])
     depth_frames.append(np.copy(obs['DEPTH']))
-    action = agent.step(reward, obs['RGB_INTERLEAVED'])
+    action = agent.step(reward, obs['RGBD_INTERLEAVED'])
     reward = env.step(action, num_steps=1)
   rgb_frames = np.stack(rgb_frames)
   depth_frames = np.stack(depth_frames)
