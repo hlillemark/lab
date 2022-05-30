@@ -1051,6 +1051,13 @@ py_binary(
 )
 
 py_binary(
+    name = "python_random_agent_original",
+    srcs = ["python/random_agent_original.py"],
+    main = "python/random_agent_original.py",
+    deps = [":python_random_agent_lib"],
+)
+
+py_binary(
     name = "python_random_agent_traverse",
     srcs = ["python/random_agent_traverse.py"],
     main = "python/random_agent_traverse.py",

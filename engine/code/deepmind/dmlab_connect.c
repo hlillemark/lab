@@ -101,6 +101,7 @@ enum ObservationsEnum {
   kObservations_MapFrameNumber,
   kObservations_RgbInterlaced,    // Deprecated.
   kObservations_RgbdInterlaced,   // Deprecated.
+  kObservations_Depth
 };
 
 const char* const kObservationNames[] = {
@@ -113,6 +114,7 @@ const char* const kObservationNames[] = {
     "MAP_FRAME_NUMBER",  //
     "RGB_INTERLACED",    //
     "RGBD_INTERLACED",   //
+    "DEPTH",             //
 };
 
 typedef enum PixelBufferTypeEnum_e {
@@ -964,6 +966,10 @@ static void dmlab_observation_spec(
         gc->image_shape[1] = gc->height;
         gc->image_shape[2] = gc->width;
         break;
+      case kObservations_Depth:
+        gc->image_shape[0] = gc->height;
+        gc->image_shape[1] = gc->width;
+        gc->image_shape[2] = 1;
     }
   } else {
     DeepmindContext* ctx = gc->dm_ctx;
@@ -1005,7 +1011,8 @@ static void dmlab_observation(
     bool render_depth = observation_idx == kObservations_RgbdInterlaced ||
                         observation_idx == kObservations_RgbdInterleaved ||
                         observation_idx == kObservations_RgbdPlanar ||
-                        observation_idx == kObservations_BgrdInterleaved;
+                        observation_idx == kObservations_BgrdInterleaved ||
+                        observation_idx == kObservations_Depth;
 
     const int width = gc->width;
     const int height = gc->height;
@@ -1074,6 +1081,10 @@ static void dmlab_observation(
         }
         break;
       }
+      case kObservations_Depth: {
+        gc->image_buffer = realloc_or_die(gc->image_buffer, window_size * 1);
+        break;
+      }
     }
     unbind_pixel_observation(gc);
 
@@ -1083,12 +1094,21 @@ static void dmlab_observation(
       switch (observation_idx) {
         case kObservations_RgbdInterlaced:
         case kObservations_RgbdInterleaved:
-        case kObservations_BgrdInterleaved:
+        case kObservations_BgrdInterleaved: {
           for (int i = 0; i < height; ++i) {
             for (int j = 0; j < width; ++j) {
               int loc = i * width + j;
               int y = i * width + j;
               image_buffer[y * 4 + 3] = temp_buffer[loc];
+            }
+          }
+          break;
+        }
+        case kObservations_Depth:
+          for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; ++j) {
+              int loc = i * width + j;
+              image_buffer[loc] = temp_buffer[loc];
             }
           }
           break;
