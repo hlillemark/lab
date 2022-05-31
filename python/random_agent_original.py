@@ -19,11 +19,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import os.path as osp
 import argparse
 import random
 import numpy as np
 import six
 import skvideo.io
+from PIL import Image
 
 import deepmind_lab
 
@@ -138,78 +141,66 @@ class SpringAgent(object):
     self.action = np.zeros([len(self.action_spec)])
 
 
-def run(length, width, height, fps, level, record, demo, demofiles, video):
+def run(length, width, height, fps, level):
   """Spins up an environment and runs the random agent."""
   config = {
       'fps': str(fps),
       'width': str(width),
       'height': str(height)
   }
-  if record:
-    config['record'] = record
-  if demo:
-    config['demo'] = demo
-  if demofiles:
-    config['demofiles'] = demofiles
-  if video:
-    config['video'] = video
   env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH', 'PROJECTION_MATRIX', 'MODELVIEW_MATRIX'], config=config)
 
   env.reset()
 
-  # Starts the random spring agent. As a simpler alternative, we could also
-  # use DiscretizedRandomAgent().
-  #agent = SpringAgent(env.action_spec())
-
-  reward = 0
-
   rgb_frames, depth_frames = [], []
-  for _ in six.moves.range(length):
+  pms, mvms = [], []
+  for i in six.moves.range(length + 15):
     if not env.is_running():
       print('Environment stopped early')
       env.reset()
       agent.reset()
     obs = env.observations()
 
-    proj = obs['PROJECTION_MATRIX']
-    modelview = obs['MODELVIEW_MATRIX']
+    if i >= 15:
+        pms.append(obs['PROJECTION_MATRIX'])
+        mvms.append(obs['MODELVIEW_MATRIX'])
+        rgb_frames.append(obs['RGB_INTERLEAVED'])
+        depth_frames.append(obs['DEPTH'])
 
-    rgb_frames.append(obs['RGB_INTERLEAVED'])
-    depth_frames.append(obs['DEPTH'])
+    env.step(DiscretizedRandomAgent.ACTIONS['look_left'], num_steps=4)
+
+  pms = np.stack(pms)
+  mvms = np.stack(mvms)
   rgb_frames = np.stack(rgb_frames)
   depth_frames = np.stack(depth_frames)
-  skvideo.io.vwrite('/home/wilson/repos/lab/video.mp4', rgb_frames)
 
-  print('Finished after %i steps. Total reward received is %f'
-        % (length, agent.rewards))
+  os.makedirs(args.output, exist_ok=True)
+  skvideo.io.vwrite(osp.join(args.output, 'video.mp4'), rgb_frames)
+
+  np.savez_compressed(osp.join(args.output, 'data.npz'), rgb=rgb_frames, depth=depth_frames, projection_matrix=pms, modelview_matrix=mvms)
+  first_frame = rgb_frames[0]
+  first_frame = Image.fromarray(first_frame)
+  first_frame.save(osp.join(args.output, 'first_frame.png'))
 
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description=__doc__)
-  parser.add_argument('--length', type=int, default=100,
+  parser.add_argument('--length', type=int, default=30,
                       help='Number of steps to run the agent')
-  parser.add_argument('--width', type=int, default=512,
+  parser.add_argument('--width', type=int, default=128,
                       help='Horizontal size of the observations')
-  parser.add_argument('--height', type=int, default=512,
+  parser.add_argument('--height', type=int, default=128,
                       help='Vertical size of the observations')
-  parser.add_argument('--fps', type=int, default=60,
+  parser.add_argument('--fps', type=int, default=30,
                       help='Number of frames per second')
   parser.add_argument('--runfiles_path', type=str, default=None,
                       help='Set the runfiles path to find DeepMind Lab data')
   parser.add_argument('--level_script', type=str,
-                      default='demos/random_max',
+                      default='demos/random_maze',
                       help='The environment level script to load')
-  parser.add_argument('--record', type=str, default=None,
-                      help='Record the run to a demo file')
-  parser.add_argument('--demo', type=str, default=None,
-                      help='Play back a recorded demo file')
-  parser.add_argument('--demofiles', type=str, default=None,
-                      help='Directory for demo files')
-  parser.add_argument('--video', type=str, default=None,
-                      help='Record the demo run as a video')
+  parser.add_argument('--output', type=str, default='/home/wilson/repos/lab')
 
   args = parser.parse_args()
   if args.runfiles_path:
     deepmind_lab.set_runfiles_path(args.runfiles_path)
-  run(args.length, args.width, args.height, args.fps, args.level_script,
-      args.record, args.demo, args.demofiles, args.video)
+  run(args.length, args.width, args.height, args.fps, args.level_script)
