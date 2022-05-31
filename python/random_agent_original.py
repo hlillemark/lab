@@ -159,7 +159,7 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
 
   # Starts the random spring agent. As a simpler alternative, we could also
   # use DiscretizedRandomAgent().
-  agent = SpringAgent(env.action_spec())
+  #agent = SpringAgent(env.action_spec())
 
   reward = 0
 
@@ -172,24 +172,13 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
     obs = env.observations()
 
     proj = obs['PROJECTION_MATRIX']
-    print(proj.shape, proj.dtype)
-    print(proj)
-
     modelview = obs['MODELVIEW_MATRIX']
-    print(modelview.shape, modelview.dtype)
-    print(modelview)
 
     rgb_frames.append(obs['RGB_INTERLEAVED'])
-    depth = obs['DEPTH']
-    depth = (depth - depth.min()) / (depth.max() - depth.min())
-    depth_frames.append((depth * 255).astype(np.uint8))
-    action = agent.step(reward, obs['RGB_INTERLEAVED'])
-    reward = env.step(action, num_steps=1)
+    depth_frames.append(obs['DEPTH'])
   rgb_frames = np.stack(rgb_frames)
   depth_frames = np.stack(depth_frames)
-  depth_frames = depth_frames.repeat(3, axis=-1)
-  video = np.concatenate((rgb_frames, depth_frames), axis=2)
-  skvideo.io.vwrite('/home/wilson/repos/lab/video.mp4', video)
+  skvideo.io.vwrite('/home/wilson/repos/lab/video.mp4', rgb_frames)
 
   print('Finished after %i steps. Total reward received is %f'
         % (length, agent.rewards))
@@ -208,7 +197,7 @@ if __name__ == '__main__':
   parser.add_argument('--runfiles_path', type=str, default=None,
                       help='Set the runfiles path to find DeepMind Lab data')
   parser.add_argument('--level_script', type=str,
-                      default='tests/empty_room_test',
+                      default='demos/random_max',
                       help='The environment level script to load')
   parser.add_argument('--record', type=str, default=None,
                       help='Record the run to a demo file')
