@@ -182,6 +182,12 @@ def run(length, width, height, fps, level):
   first_frame = Image.fromarray(first_frame)
   first_frame.save(osp.join(args.output, 'first_frame.png'))
 
+  first_frame_depth = depth_frames[0].repeat(3, axis=-1)
+  first_frame_depth = (first_frame_depth - first_frame_depth.min()) / (first_frame_depth.max() - first_frame_depth.min())
+  first_frame_depth = Image.fromarray((first_frame_depth * 255).astype(np.uint8))
+  first_frame_depth.save(osp.join(args.output, 'first_frame_depth.png'))
+
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description=__doc__)
@@ -198,7 +204,7 @@ if __name__ == '__main__':
   parser.add_argument('--level_script', type=str,
                       default='demos/random_maze',
                       help='The environment level script to load')
-  parser.add_argument('--output', type=str, default='/home/wilson/repos/lab')
+  parser.add_argument('--output', type=str, default='/home/wilson/repos/lab/trajectory')
 
   args = parser.parse_args()
   if args.runfiles_path:
