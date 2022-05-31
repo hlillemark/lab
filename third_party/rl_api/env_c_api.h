@@ -154,6 +154,7 @@ struct EnvCApi_Observation_s {
   EnvCApi_ObservationSpec spec;
   union {
     const double* doubles;
+    const float* floats;
     const unsigned char* bytes;
     const char* string;
   } payload;

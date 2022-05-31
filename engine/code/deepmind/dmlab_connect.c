@@ -101,7 +101,9 @@ enum ObservationsEnum {
   kObservations_MapFrameNumber,
   kObservations_RgbInterlaced,    // Deprecated.
   kObservations_RgbdInterlaced,   // Deprecated.
-  kObservations_Depth
+  kObservations_Depth,
+  kObservations_ProjectionMatrix,
+  kObservations_ModelViewMatrix
 };
 
 const char* const kObservationNames[] = {
@@ -115,6 +117,8 @@ const char* const kObservationNames[] = {
     "RGB_INTERLACED",    //
     "RGBD_INTERLACED",   //
     "DEPTH",             //
+    "PROJECTION_MATRIX", //
+    "MODELVIEW_MATRIX",  //
 };
 
 typedef enum PixelBufferTypeEnum_e {
@@ -176,6 +180,9 @@ typedef struct GameContext_s {
   double map_frame_number_observation;
   bool is_map_loading;
   bool current_screen_rendered;
+
+  int projection_matrix_shape[2];
+  int modelview_matrix_shape[2];
 } GameContext;
 
 // **** Local helper functions and data **** //
@@ -941,6 +948,14 @@ static void dmlab_observation_spec(
     spec->type = EnvCApi_ObservationDoubles;
     spec->dims = 1;
     spec->shape = gc->map_frame_number_shape;
+  } else if (observation_idx == kObservations_ProjectionMatrix) {
+    spec->type = EnvCApi_ObservationFloats;
+    spec->dims = 2;
+    spec->shape = gc->projection_matrix_shape;
+  } else if (observation_idx == kObservations_ModelViewMatrix) {
+    spec->type = EnvCApi_ObservationFloats;
+    spec->dims = 2;
+    spec->shape = gc->modelview_matrix_shape;
   } else if (observation_idx < ARRAY_LEN(kObservationNames)) {
     spec->type = EnvCApi_ObservationBytes;
     spec->dims = 3;
@@ -1009,6 +1024,34 @@ static void dmlab_observation(
     if (observation_idx == kObservations_MapFrameNumber) {
       gc->map_frame_number_observation = cls.framecount - gc->map_start_frame;
       obs->payload.doubles = &gc->map_frame_number_observation;
+      return;
+    } else if (observation_idx == kObservations_ProjectionMatrix) {
+      float data[16];
+      qglGetFloatv(GL_PROJECTION_MATRIX, data);
+      for (int i = 0; i < 4; ++i) {
+        for (int j = i; j < 4; ++j) {
+          int src = i * 4 + j;
+          int dest = j * 4 + i;
+          float tmp = data[src];
+          data[src] = data[dest];
+          data[dest] = tmp;
+        }
+      }
+      memcpy(obs->payload.floats, data, sizeof(float) * 16);
+      return;
+    } else if (observation_idx == kObservations_ModelViewMatrix) {
+      float data[16];
+      qglGetFloatv(GL_MODELVIEW_MATRIX, data);
+      for (int i = 0; i < 4; ++i) {
+        for (int j = i; j < 4; ++j) {
+          int src = i * 4 + j;
+          int dest = j * 4 + i;
+          float tmp = data[src];
+          data[src] = data[dest];
+          data[dest] = tmp;
+        }
+      }
+      memcpy(obs->payload.floats, data, sizeof(float) * 16);
       return;
     }
 
@@ -1522,6 +1565,12 @@ int dmlab_connect(const DeepMindLabLaunchParams* params, EnvCApi* env_c_api,
   gc->map_frame_number_shape[0] = 1;
   gc->map_frame_number_observation = 0;
   gc->pbos.enabled = true;
+
+  gc->projection_matrix_shape[0] = 4;
+  gc->projection_matrix_shape[1] = 4;
+
+  gc->modelview_matrix_shape[0] = 4;
+  gc->modelview_matrix_shape[1] = 4;
 
   memset(env_c_api, 0, sizeof(EnvCApi));
 

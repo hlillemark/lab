@@ -153,7 +153,7 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
     config['demofiles'] = demofiles
   if video:
     config['video'] = video
-  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH'], config=config)
+  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH', 'PROJECTION_MATRIX', 'MODELVIEW_MATRIX'], config=config)
 
   env.reset()
 
@@ -170,6 +170,14 @@ def run(length, width, height, fps, level, record, demo, demofiles, video):
       env.reset()
       agent.reset()
     obs = env.observations()
+
+    proj = obs['PROJECTION_MATRIX']
+    print(proj.shape, proj.dtype)
+    print(proj)
+
+    modelview = obs['MODELVIEW_MATRIX']
+    print(modelview.shape, modelview.dtype)
+    print(modelview)
 
     rgb_frames.append(obs['RGB_INTERLEAVED'])
     depth = obs['DEPTH']
