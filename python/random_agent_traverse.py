@@ -28,6 +28,7 @@ import numpy as np
 from tqdm import tqdm
 import six
 from PIL import Image
+from scipy.spatial.transform import Rotation
 
 import deepmind_lab
 
@@ -208,7 +209,11 @@ class Maze:
 def sample_trajectory(env, agent, length, name, goal_dist, skip=10):
   env.reset()
   frames = []
-  #top_down = []
+  depth_frames = []
+  proj_matrices = []
+  mv_matrices = []
+  poss = []
+  rots = []
   actions = []
   
   obs = env.observations()
@@ -230,16 +235,34 @@ def sample_trajectory(env, agent, length, name, goal_dist, skip=10):
 
     if t >= skip:
         frames.append(obs['RGB_INTERLEAVED'].copy())
-        #top_down.append(obs['DEBUG.CAMERA_INTERLEAVED.TOP_DOWN'].copy())
         actions.append(idx)
+        depth_frames.append(obs['DEPTH'].copy())
+        proj_matrices.append(obs['PROJECTION_MATRIX'].copy())
+
+        mv = obs['MODELVIEW_MATRIX'].copy()
+        mv = np.linalg.inv(mv)
+        rot, pos = mv[:3, :3], mv[:3, -1]
+        r = np.sqrt(1.0 + rot[0, 0] + rot[1, 1] + rot[2, 2]) * 0.5
+        i = (rot[2, 1] - rot[1, 2]) / (4 * r)
+        j = (rot[0, 2] - rot[2, 0]) / (4 * r)
+        k = (rot[1, 0] - rot[0, 1]) / (4 * r)
+        rot = np.array([i, j, k, r]).astype(np.float32)
+        
+        poss.append(pos)
+        rots.append(rot)
     env.step(action, num_steps=4)
 
   video = np.stack(frames, axis=0)
-  #top_down = np.stack(top_down, axis=0)
   actions = np.array(actions).astype(int)
+  depth_frames = np.array(depth_frames).astype(np.float32)
+  proj_matrices = np.array(proj_matrices).astype(np.float32)
+  mv_matrices = np.array(mv_matrices).astype(np.float32)
+  poss = np.array(poss).astype(np.float32)
+  rots = np.array(rots).astype(np.float32)
   filepath = osp.join(args.output_dir, f'{name}.npz')
-  np.savez(filepath, video=video, actions=actions)
-
+  np.savez(filepath, video=video, actions=actions,
+           depth_video=depth_frames, proj_matrices=proj_matrices,
+           mv_matrices=mv_matrices, pos=poss, rot=rots)
 
 def sample_trajectories(n, env, agent, length, goal_dist):
     i = 0
@@ -251,39 +274,31 @@ def sample_trajectories(n, env, agent, length, goal_dist):
     pbar.close()
 
 
-def run(length, width, height, fps, level, record, demo, demofiles, video):
+def run(length, width, height, fps, level):
   """Spins up an environment and runs the random agent."""
   config = {
       'fps': str(fps),
       'width': str(width),
       'height': str(height)
   }
-  if record:
-    config['record'] = record
-  if demo:
-    config['demo'] = demo
-  if demofiles:
-    config['demofiles'] = demofiles
-  if video:
-    config['video'] = video
 
   os.makedirs(args.output_dir, exist_ok=True)
 
-  # DEBUG.CAMERA_INTERLEAVED.TOP_DOWN
-  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEBUG.POS.TRANS', 'DEBUG.POS.ROT', 'DEBUG.MAZE.LAYOUT'], config=config)
+  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH', 'PROJECTION_MATRIX', 'MODELVIEW_MATRIX',
+                                 'DEBUG.POS.TRANS', 'DEBUG.POS.ROT', 'DEBUG.MAZE.LAYOUT'], config=config)
   agent = GoalAgent()
   sample_trajectories(args.n_traj, env, agent, length, args.goal_dist)
 
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description=__doc__)
-  parser.add_argument('--length', type=int, default=100,
+  parser.add_argument('--length', type=int, default=300,
                       help='Number of steps to run the agent')
-  parser.add_argument('--width', type=int, default=64,
+  parser.add_argument('--width', type=int, default=128,
                       help='Horizontal size of the observations')
-  parser.add_argument('--height', type=int, default=64,
+  parser.add_argument('--height', type=int, default=128,
                       help='Vertical size of the observations')
-  parser.add_argument('--goal_dist', type=int, default=1,
+  parser.add_argument('--goal_dist', type=int, default=10,
                       help='Sample goal # steps away')
   parser.add_argument('--fps', type=int, default=30,
                       help='Number of frames per second')
@@ -292,21 +307,11 @@ if __name__ == '__main__':
   parser.add_argument('--level_script', type=str,
                       default='demos/random_maze',
                       help='The environment level script to load')
-  parser.add_argument('--n_traj', type=int, default=64)
-  parser.add_argument('--output_dir', type=str, default='/shared/wilson/datasets/dl_maze')
+  parser.add_argument('--n_traj', type=int, default=1)
+  parser.add_argument('--output_dir', type=str, default='/home/wilson/repos/lab/datasets/dl_maze')
 
-
-  parser.add_argument('--record', type=str, default=None,
-                      help='Record the run to a demo file')
-  parser.add_argument('--demo', type=str, default=None,
-                      help='Play back a recorded demo file')
-  parser.add_argument('--demofiles', type=str, default=None,
-                      help='Directory for demo files')
-  parser.add_argument('--video', type=str, default=None,
-                      help='Record the demo run as a video')
 
   args = parser.parse_args()
   if args.runfiles_path:
     deepmind_lab.set_runfiles_path(args.runfiles_path)
-  run(args.length, args.width, args.height, args.fps, args.level_script,
-      args.record, args.demo, args.demofiles, args.video)
+  run(args.length, args.width, args.height, args.fps, args.level_script)

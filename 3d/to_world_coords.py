@@ -1,20 +1,36 @@
+import sys
 import numpy as np
-import matplotlib.pyplot as plt
 import open3d as o3d
+from scipy.spatial.transform import Rotation
+from scipy.ndimage import zoom
 
 
-data = np.load('/home/wilson/repos/lab/trajectory/data.npz')
-T = data['depth'].shape[0]
+def compute_mv_matrix(eye, angle):
+    rot = Rotation.from_quat(angle).as_matrix()
+    mv_matrix = np.concatenate([rot, eye[:, None]], axis=-1)
+    mv_matrix = np.concatenate([mv_matrix, np.array([[0, 0, 0, 1]])], axis=0)
+    return mv_matrix
+
+
+R = 128
+data = np.load(sys.argv[1])
+T = data['video'].shape[0]
 
 all_points = []
 all_colors = []
 for t in range(T):
-    p_matrix = data['projection_matrix'][t]
-    mv_matrix = data['modelview_matrix'][t]
-    depth_frame = data['depth'][t]
-    rgb_frame = data['rgb'][t] / 255.
+    eye = data['pos'][t]
+    angle = data['rot'][t]
+    mv_matrix = compute_mv_matrix(eye, angle)
+    
+    p_matrix = data['proj_matrices'][t]
+    depth_frame = data['depth_video'][t]
+    F = R / depth_frame.shape[0]
+    depth_frame = zoom(depth_frame, (F, F, 1), order=1)
+    rgb_frame = data['video'][t] / 255.
+    rgb_frame = zoom(rgb_frame, (F, F, 1), order=1)
 
-    x = y = np.linspace(0, 1, depth_frame.shape[0])
+    x = y = np.linspace(0, 1, R)
     coords = np.stack(np.meshgrid(x, y), axis=-1)
     coords = np.reshape(coords, (-1, 2))
 
@@ -24,7 +40,7 @@ for t in range(T):
     clip_points = np.concatenate([coords, z, np.ones_like(z)], axis=-1)
 
     point = (np.linalg.inv(p_matrix) @ clip_points.T).T
-    point = (np.linalg.inv(mv_matrix) @ point.T).T
+    point = (mv_matrix @ point.T).T
     point /= point[:, [-1]]
     point = point[:, :-1]
 

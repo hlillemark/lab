@@ -59,88 +59,6 @@ class DiscretizedRandomAgent(object):
     return random.choice(DiscretizedRandomAgent.ACTION_LIST)
 
 
-class SpringAgent(object):
-  """A random agent using spring-like forces for its action evolution."""
-
-  def __init__(self, action_spec):
-    self.action_spec = action_spec
-    print('Starting random spring agent. Action spec:', action_spec)
-
-    self.omega = np.array([
-        0.1,  # look left-right
-        0.1,  # look up-down
-        0.1,  # strafe left-right
-        0.1,  # forward-backward
-        0.0,  # fire
-        0.0,  # jumping
-        0.0  # crouching
-    ])
-
-    self.velocity_scaling = np.array([2.5, 2.5, 0.01, 0.01, 1, 1, 1])
-
-    self.indices = {a['name']: i for i, a in enumerate(self.action_spec)}
-    self.mins = np.array([a['min'] for a in self.action_spec])
-    self.maxs = np.array([a['max'] for a in self.action_spec])
-    self.reset()
-
-    self.rewards = 0
-
-  def critically_damped_derivative(self, t, omega, displacement, velocity):
-    r"""Critical damping for movement.
-
-    I.e., x(t) = (A + Bt) \exp(-\omega t) with A = x(0), B = x'(0) + \omega x(0)
-
-    See
-      https://en.wikipedia.org/wiki/Damping#Critical_damping_.28.CE.B6_.3D_1.29
-    for details.
-
-    Args:
-      t: A float representing time.
-      omega: The undamped natural frequency.
-      displacement: The initial displacement at, x(0) in the above equation.
-      velocity: The initial velocity, x'(0) in the above equation
-
-    Returns:
-       The velocity x'(t).
-    """
-    a = displacement
-    b = velocity + omega * displacement
-    return (b - omega * t * (a + t * b)) * np.exp(-omega * t)
-
-  def step(self, reward, unused_frame):
-    """Gets an image state and a reward, returns an action."""
-    self.rewards += reward
-
-    action = (self.maxs - self.mins) * np.random.random_sample(
-        size=[len(self.action_spec)]) + self.mins
-
-    # Compute the 'velocity' 1 time unit after a critical damped force
-    # dragged us towards the random `action`, given our current velocity.
-    self.velocity = self.critically_damped_derivative(1, self.omega, action,
-                                                      self.velocity)
-
-    # Since walk and strafe are binary, we need some additional memory to
-    # smoothen the movement. Adding half of action from the last step works.
-    self.action = self.velocity / self.velocity_scaling + 0.5 * self.action
-
-    # Fire with p = 0.01 at each step
-    self.action[self.indices['FIRE']] = int(np.random.random() > 0.99)
-
-    # Jump/crouch with p = 0.005 at each step
-    self.action[self.indices['JUMP']] = int(np.random.random() > 0.995)
-    self.action[self.indices['CROUCH']] = int(np.random.random() > 0.995)
-
-    # Clip to the valid range and convert to the right dtype
-    return self.clip_action(self.action)
-
-  def clip_action(self, action):
-    return np.clip(action, self.mins, self.maxs).astype(np.intc)
-
-  def reset(self):
-    self.velocity = np.zeros([len(self.action_spec)])
-    self.action = np.zeros([len(self.action_spec)])
-
-
 def run(length, width, height, fps, level):
   """Spins up an environment and runs the random agent."""
   config = {
@@ -148,17 +66,18 @@ def run(length, width, height, fps, level):
       'width': str(width),
       'height': str(height)
   }
-  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH', 'PROJECTION_MATRIX', 'MODELVIEW_MATRIX'], config=config)
+  env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH', 'PROJECTION_MATRIX', 
+                                 'MODELVIEW_MATRIX', 'DEBUG.POS.TRANS', 'DEBUG.POS.ROT'], config=config)
 
   env.reset()
 
   rgb_frames, depth_frames = [], []
   pms, mvms = [], []
+  eyes, angles = [], []
   for i in six.moves.range(length + 15):
     if not env.is_running():
       print('Environment stopped early')
       env.reset()
-      agent.reset()
     obs = env.observations()
 
     if i >= 15:
@@ -166,6 +85,8 @@ def run(length, width, height, fps, level):
         mvms.append(obs['MODELVIEW_MATRIX'])
         rgb_frames.append(obs['RGB_INTERLEAVED'])
         depth_frames.append(obs['DEPTH'])
+        eyes.append(obs['DEBUG.POS.TRANS'].astype(np.float32))
+        angles.append(obs['DEBUG.POS.ROT'].astype(np.float32))
 
     env.step(DiscretizedRandomAgent.ACTIONS['look_left'], num_steps=4)
 
@@ -173,11 +94,14 @@ def run(length, width, height, fps, level):
   mvms = np.stack(mvms)
   rgb_frames = np.stack(rgb_frames)
   depth_frames = np.stack(depth_frames)
+  eyes = np.stack(eyes)
+  angles = np.stack(angles)
 
   os.makedirs(args.output, exist_ok=True)
   skvideo.io.vwrite(osp.join(args.output, 'video.mp4'), rgb_frames)
 
-  np.savez_compressed(osp.join(args.output, 'data.npz'), rgb=rgb_frames, depth=depth_frames, projection_matrix=pms, modelview_matrix=mvms)
+  np.savez_compressed(osp.join(args.output, 'data.npz'), rgb=rgb_frames, depth=depth_frames, 
+                      projection_matrix=pms, modelview_matrix=mvms, eye=eyes, angle=angles)
   first_frame = rgb_frames[0]
   first_frame = Image.fromarray(first_frame)
   first_frame.save(osp.join(args.output, 'first_frame.png'))
