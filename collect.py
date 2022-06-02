@@ -16,9 +16,9 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--data_path', type=str, required=True)
     parser.add_argument('-n', '--n_traj', type=int, default=40000)
     parser.add_argument('-l', '--length', type=int, default=300)
-    parser.add_argument('--width', type=int, default=128,
+    parser.add_argument('--width', type=int, default=64,
                         help='Horizontal size of the observations')
-    parser.add_argument('--height', type=int, default=128,
+    parser.add_argument('--height', type=int, default=64,
                         help='Vertical size of the observations')
     parser.add_argument('--fps', type=int, default=30,
                         help='Number of frames per second')

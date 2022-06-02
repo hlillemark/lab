@@ -117,7 +117,7 @@ class GoalAgent(object):
 
 
     def step(self, timestep, pos, rot, target):
-        if timestep < 40:
+        if timestep < 30:
             return self.ACTIONS['look_left'], 0
 
         action = self.move_to_target(pos, rot, target)
