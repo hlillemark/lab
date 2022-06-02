@@ -110,7 +110,7 @@ class GoalAgent(object):
 
         turn_dir = self._get_rotation(rot[1], angle)
         if abs(rot[1] - angle) < 10 or abs(rot[1] - 360 - angle) < 10 or abs(rot[1] + 360 - angle) < 10:
-            action = f'{turn_dir}_forward'
+            action = 'forward'
         else:
             action = turn_dir
         return action
@@ -172,11 +172,10 @@ class Maze:
                     neighbors.append((xn, yn))
         return neighbors
 
-    def sample_goal_path(self, x, y, dist):
+    def sample_goal_path(self, x, y):
         maze = self.maze
         x, y = self.to_maze_coord(x, y)
         assert maze[x, y] == 0, 'x-y pos must not be a wall'
-        assert dist > 0
 
         dist_to_cur = np.zeros_like(maze)
         def fill_bfs(root):
@@ -189,7 +188,10 @@ class Maze:
                         dist_to_cur[n] = dist_to_cur[node] + 1
                         queue.append(n)
         fill_bfs((x, y))
-        xs, ys = np.where(dist_to_cur == dist)
+
+        max_dist = dist_to_cur.max()
+        threshold = min(8, max_dist)
+        xs, ys = np.where(dist_to_cur >= threshold)
         assert len(xs) > 0
         idx = np.random.randint(0, len(xs))
         xg, yg = xs[idx], ys[idx]
@@ -206,7 +208,7 @@ class Maze:
         return np.array(landmarks)
 
 
-def sample_trajectory(env, agent, length, name, goal_dist, skip=10):
+def sample_trajectory(env, agent, length, name, skip=10):
   env.reset()
   frames = []
   depth_frames = []
@@ -222,14 +224,17 @@ def sample_trajectory(env, agent, length, name, goal_dist, skip=10):
   rot = obs['DEBUG.POS.ROT']
 
   cur_idx = 0
-  path = maze.sample_goal_path(pos[0], pos[1], goal_dist)
+  path = maze.sample_goal_path(pos[0], pos[1])
 
   for t in range(length + skip):
     obs = env.observations()
     pos = obs['DEBUG.POS.TRANS']
     rot = obs['DEBUG.POS.ROT']
-    if np.linalg.norm(pos[:2] - path[cur_idx]) <= 10:
-        cur_idx = (cur_idx + 1) % len(path)
+    if np.linalg.norm(pos[:2] - path[cur_idx]) <= 40:
+        cur_idx += 1
+        if cur_idx >= len(path):
+            path = maze.sample_goal_path(pos[0], pos[1])
+            cur_idx = 0
 
     action, idx = agent.step(t, pos, rot, path[cur_idx])
 
@@ -264,11 +269,11 @@ def sample_trajectory(env, agent, length, name, goal_dist, skip=10):
            depth_video=depth_frames, proj_matrices=proj_matrices,
            mv_matrices=mv_matrices, pos=poss, rot=rots)
 
-def sample_trajectories(n, env, agent, length, goal_dist):
+def sample_trajectories(n, env, agent, length):
     i = 0
     pbar = tqdm(total=n)
     while i < n:
-        success = sample_trajectory(env, agent, length, i, goal_dist)
+        success = sample_trajectory(env, agent, length, i)
         pbar.update(1)
         i += 1
     pbar.close()
@@ -287,7 +292,7 @@ def run(length, width, height, fps, level):
   env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH', 'PROJECTION_MATRIX', 'MODELVIEW_MATRIX',
                                  'DEBUG.POS.TRANS', 'DEBUG.POS.ROT', 'DEBUG.MAZE.LAYOUT'], config=config)
   agent = GoalAgent()
-  sample_trajectories(args.n_traj, env, agent, length, args.goal_dist)
+  sample_trajectories(args.n_traj, env, agent, length)
 
 
 if __name__ == '__main__':
@@ -298,8 +303,6 @@ if __name__ == '__main__':
                       help='Horizontal size of the observations')
   parser.add_argument('--height', type=int, default=128,
                       help='Vertical size of the observations')
-  parser.add_argument('--goal_dist', type=int, default=10,
-                      help='Sample goal # steps away')
   parser.add_argument('--fps', type=int, default=30,
                       help='Number of frames per second')
   parser.add_argument('--runfiles_path', type=str, default=None,
@@ -307,7 +310,7 @@ if __name__ == '__main__':
   parser.add_argument('--level_script', type=str,
                       default='demos/random_maze',
                       help='The environment level script to load')
-  parser.add_argument('--n_traj', type=int, default=1)
+  parser.add_argument('--n_traj', type=int, default=1000)
   parser.add_argument('--output_dir', type=str, default='/home/wilson/repos/lab/datasets/dl_maze')
 
 

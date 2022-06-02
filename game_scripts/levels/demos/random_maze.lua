@@ -84,9 +84,9 @@ end
 
 function api:start(episode, seed, params)
   random:seed(seed)
-  local rows, cols = 15, 15
+  local rows, cols = 9, 9
   local mazeT = generateTensorMaze(rows, cols)
-  local maze = maze_generation.mazeGeneration{height = rows, width = cols}
+  local maze = maze_generation.mazeGeneration{height = rows, width = cols, maxRooms = 4, simplify = true, extraConnectionProbability = 0.5}
   local variations = {'.', 'A', 'B', 'C'}
   mazeT:applyIndexed(function(val, index)
     local row, col = unpack(index)
@@ -104,7 +104,7 @@ function api:start(episode, seed, params)
 
   local goal = getRandomEvenCoodinate(rows, cols)
 
-  maze:setEntityCell(goal[1], goal[2], 'G')
+  -- maze:setEntityCell(goal[1], goal[2], 'G')
 
   log.info('Maze Generated:\n' .. maze:entityLayer())
   log.info('Adding spawn points and apples:')
