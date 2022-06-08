@@ -145,6 +145,17 @@ class Maze:
                     maze[i, j] = 1
         self.maze = maze
 
+        self.width, self.height = width, height
+        self.reset_visited()
+
+
+    def reset_visited(self):
+        self.visited = np.zeros((self.width, self.height), dtype=bool)
+        for i in range(self.width):
+            for j in range(self.height):
+                if self.maze[i, j] == 1:
+                    self.visited[i, j] = True
+
     def to_world_coord(self, x, y):
         maze = self.maze
         y = maze.shape[1] - y - 1
@@ -174,6 +185,7 @@ class Maze:
 
     def sample_goal_path(self, x, y):
         maze = self.maze
+        x_o, y_o = x, y
         x, y = self.to_maze_coord(x, y)
         assert maze[x, y] == 0, 'x-y pos must not be a wall'
 
@@ -189,21 +201,26 @@ class Maze:
                         queue.append(n)
         fill_bfs((x, y))
 
-        max_dist = dist_to_cur.max()
-        threshold = min(8, max_dist)
-        xs, ys = np.where(dist_to_cur >= threshold)
+        max_dist = (~self.visited * dist_to_cur).max()
+        if max_dist == 0:
+            self.reset_visited()
+            max_dist = (~self.visited * dist_to_cur).max()
+
+        xs, ys = np.where(dist_to_cur == max_dist)
         assert len(xs) > 0
         idx = np.random.randint(0, len(xs))
         xg, yg = xs[idx], ys[idx]
 
+        self.visited[x, y] = True
         landmarks = []
         xc, yc = xg, yg
         while (xc, yc) != (x, y):
+            self.visited[xc, yc] = True
             ns = self._get_neighbors(xc, yc)
             n = min(ns, key=lambda n: dist_to_cur[n])
             landmarks.insert(0, n)
             xc, yc = n
-        landmarks = landmarks[1:] + [(xg, yg)] + landmarks[::-1]
+        landmarks = landmarks[1:] + [(xg, yg)]
         landmarks = [self.to_world_coord(*lm) for lm in landmarks]
         return np.array(landmarks)
 
@@ -247,11 +264,9 @@ def sample_trajectory(env, agent, length, name, skip=10):
         mv = obs['MODELVIEW_MATRIX'].copy()
         mv = np.linalg.inv(mv)
         rot, pos = mv[:3, :3], mv[:3, -1]
-        r = np.sqrt(1.0 + rot[0, 0] + rot[1, 1] + rot[2, 2]) * 0.5
-        i = (rot[2, 1] - rot[1, 2]) / (4 * r)
-        j = (rot[0, 2] - rot[2, 0]) / (4 * r)
-        k = (rot[1, 0] - rot[0, 1]) / (4 * r)
-        rot = np.array([i, j, k, r]).astype(np.float32)
+        rot = Rotation.from_matrix(rot).as_quat().astype(np.float32)
+        if np.any(np.isnan(rot)):
+            print('ERROR', mv, rot)
         
         poss.append(pos)
         rots.append(rot)
@@ -299,9 +314,9 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('--length', type=int, default=300,
                       help='Number of steps to run the agent')
-  parser.add_argument('--width', type=int, default=128,
+  parser.add_argument('--width', type=int, default=64,
                       help='Horizontal size of the observations')
-  parser.add_argument('--height', type=int, default=128,
+  parser.add_argument('--height', type=int, default=64,
                       help='Vertical size of the observations')
   parser.add_argument('--fps', type=int, default=30,
                       help='Number of frames per second')
@@ -310,8 +325,8 @@ if __name__ == '__main__':
   parser.add_argument('--level_script', type=str,
                       default='demos/random_maze',
                       help='The environment level script to load')
-  parser.add_argument('--n_traj', type=int, default=1000)
-  parser.add_argument('--output_dir', type=str, default='/home/wilson/repos/lab/datasets/dl_maze')
+  parser.add_argument('--n_traj', type=int, default=40000)
+  parser.add_argument('--output_dir', type=str, default='/shared/wilson/datasets/dl_maze_debug')
 
 
   args = parser.parse_args()

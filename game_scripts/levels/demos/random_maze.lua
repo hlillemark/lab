@@ -106,8 +106,8 @@ function api:start(episode, seed, params)
 
   -- maze:setEntityCell(goal[1], goal[2], 'G')
 
-  log.info('Maze Generated:\n' .. maze:entityLayer())
-  log.info('Adding spawn points and apples:')
+  -- log.info('Maze Generated:\n' .. maze:entityLayer())
+  -- log.info('Adding spawn points and apples:')
   maze:visitFill{
       cell = goal,
       func = function(row, col, distance)
@@ -120,7 +120,7 @@ function api:start(episode, seed, params)
       end
   }
 
-  log.info('Maze:\n' .. maze:entityLayer())
+  -- log.info('Maze:\n' .. maze:entityLayer())
   api._maze_name = make_map.makeMap{
       mapName = 'map_random_maze',
       mapEntityLayer = maze:entityLayer(),
