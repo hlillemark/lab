@@ -280,9 +280,12 @@ def sample_trajectory(env, agent, length, name, skip=10):
   poss = np.array(poss).astype(np.float32)
   rots = np.array(rots).astype(np.float32)
   filepath = osp.join(args.output_dir, f'{name}.npz')
-  np.savez(filepath, video=video, actions=actions,
-           depth_video=depth_frames, proj_matrices=proj_matrices,
-           mv_matrices=mv_matrices, pos=poss, rot=rots)
+  if args.rgb_only:
+    np.savez(filepath, video=video, actions=actions)
+  else:
+    np.savez(filepath, video=video, actions=actions,
+             depth_video=depth_frames, proj_matrices=proj_matrices,
+             mv_matrices=mv_matrices, pos=poss, rot=rots)
 
 def sample_trajectories(n, env, agent, length):
     i = 0
@@ -327,6 +330,7 @@ if __name__ == '__main__':
                       help='The environment level script to load')
   parser.add_argument('--n_traj', type=int, default=40000)
   parser.add_argument('--output_dir', type=str, default='/shared/wilson/datasets/dl_maze_debug')
+  parser.add_argument('--rgb_only', action='store_true')
 
 
   args = parser.parse_args()
