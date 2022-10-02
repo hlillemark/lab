@@ -8,7 +8,7 @@ def worker(i, args):
     output_dir = osp.join(args.data_path, f'{i}')
     n_traj = args.n_traj // args.n_parallel + (i < (args.n_traj % args.n_parallel))
     cmd = f'bazel run :python_random_agent_traverse -- --length {args.length} --width {args.width} --height {args.height} --fps {args.fps} --output_dir {output_dir} --n_traj {n_traj}'
-    if args.rgb_only:
+    if not args.collect_3d:
         cmd += ' --rgb_only'
     os.system(cmd)
 
@@ -24,7 +24,7 @@ if __name__ == '__main__':
                         help='Vertical size of the observations')
     parser.add_argument('--fps', type=int, default=30,
                         help='Number of frames per second')
-    parser.add_argument('--rgb_only', action='store_true')
+    parser.add_argument('--collect_3d', action='store_true')
     parser.add_argument('-p', '--n_parallel', type=int, default=4)
     args = parser.parse_args()
 

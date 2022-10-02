@@ -329,7 +329,7 @@ if __name__ == '__main__':
                       default='demos/random_maze',
                       help='The environment level script to load')
   parser.add_argument('--n_traj', type=int, default=40000)
-  parser.add_argument('--output_dir', type=str, default='/shared/wilson/datasets/dl_maze_debug')
+  parser.add_argument('--output_dir', type=str, required=True)
   parser.add_argument('--rgb_only', action='store_true')
 
 

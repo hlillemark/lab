@@ -1,11 +1,11 @@
- # DMLab
+# DMLab
 
- A fork of the [original DMLab repo](https://github.com/deepmind/lab)
+A fork of the [original DMLab repo](https://github.com/deepmind/lab)
 
- # Installation
+# Installation
 
- Refer to the original installation instructions
+Refer to the original installation instructions
 
- `pip install scipy`
+# Collecting
 
- # Collecting
+`python collect.py -d data_path`
