@@ -226,66 +226,66 @@ class Maze:
 
 
 def sample_trajectory(env, agent, length, name, skip=10):
-  env.reset()
-  frames = []
-  depth_frames = []
-  proj_matrices = []
-  mv_matrices = []
-  poss = []
-  rots = []
-  actions = []
-  
-  obs = env.observations()
-  maze = Maze(obs['DEBUG.MAZE.LAYOUT'])
-  pos = obs['DEBUG.POS.TRANS']
-  rot = obs['DEBUG.POS.ROT']
-
-  cur_idx = 0
-  path = maze.sample_goal_path(pos[0], pos[1])
-
-  for t in range(length + skip):
+    env.reset()
+    frames = []
+    depth_frames = []
+    proj_matrices = []
+    mv_matrices = []
+    poss = []
+    rots = []
+    actions = []
+	
     obs = env.observations()
+    maze = Maze(obs['DEBUG.MAZE.LAYOUT'])
     pos = obs['DEBUG.POS.TRANS']
     rot = obs['DEBUG.POS.ROT']
-    if np.linalg.norm(pos[:2] - path[cur_idx]) <= 40:
-        cur_idx += 1
-        if cur_idx >= len(path):
-            path = maze.sample_goal_path(pos[0], pos[1])
-            cur_idx = 0
 
-    action, idx = agent.step(t, pos, rot, path[cur_idx])
+    cur_idx = 0
+    path = maze.sample_goal_path(pos[0], pos[1])
 
-    if t >= skip:
-        frames.append(obs['RGB_INTERLEAVED'].copy())
-        actions.append(idx)
-        depth_frames.append(obs['DEPTH'].copy())
-        proj_matrices.append(obs['PROJECTION_MATRIX'].copy())
+    for t in range(length + skip):
+        obs = env.observations()
+        pos = obs['DEBUG.POS.TRANS']
+        rot = obs['DEBUG.POS.ROT']
+        if np.linalg.norm(pos[:2] - path[cur_idx]) <= 40:
+            cur_idx += 1
+            if cur_idx >= len(path):
+                path = maze.sample_goal_path(pos[0], pos[1])
+                cur_idx = 0
 
-        mv = obs['MODELVIEW_MATRIX'].copy()
-        mv = np.linalg.inv(mv)
-        rot, pos = mv[:3, :3], mv[:3, -1]
-        rot = Rotation.from_matrix(rot).as_quat().astype(np.float32)
-        if np.any(np.isnan(rot)):
-            print('ERROR', mv, rot)
-        
-        poss.append(pos)
-        rots.append(rot)
-    env.step(action, num_steps=4)
+        action, idx = agent.step(t, pos, rot, path[cur_idx])
 
-  video = np.stack(frames, axis=0)
-  actions = np.array(actions).astype(int)
-  depth_frames = np.array(depth_frames).astype(np.float32)
-  proj_matrices = np.array(proj_matrices).astype(np.float32)
-  mv_matrices = np.array(mv_matrices).astype(np.float32)
-  poss = np.array(poss).astype(np.float32)
-  rots = np.array(rots).astype(np.float32)
-  filepath = osp.join(args.output_dir, f'{name}.npz')
-  if args.rgb_only:
-    np.savez(filepath, video=video, actions=actions)
-  else:
-    np.savez(filepath, video=video, actions=actions,
-             depth_video=depth_frames, proj_matrices=proj_matrices,
-             mv_matrices=mv_matrices, pos=poss, rot=rots)
+        if t >= skip:
+            frames.append(obs['RGB_INTERLEAVED'].copy())
+            actions.append(idx)
+            depth_frames.append(obs['DEPTH'].copy())
+            proj_matrices.append(obs['PROJECTION_MATRIX'].copy())
+
+            mv = obs['MODELVIEW_MATRIX'].copy()
+            mv = np.linalg.inv(mv)
+            rot, pos = mv[:3, :3], mv[:3, -1]
+            rot = Rotation.from_matrix(rot).as_quat().astype(np.float32)
+            if np.any(np.isnan(rot)):
+                print('ERROR', mv, rot)
+			
+            poss.append(pos)
+            rots.append(rot)
+        env.step(action, num_steps=4)
+
+    video = np.stack(frames, axis=0)
+    actions = np.array(actions).astype(int)
+    depth_frames = np.array(depth_frames).astype(np.float32)
+    proj_matrices = np.array(proj_matrices).astype(np.float32)
+    mv_matrices = np.array(mv_matrices).astype(np.float32)
+    poss = np.array(poss).astype(np.float32)
+    rots = np.array(rots).astype(np.float32)
+    filepath = osp.join(args.output_dir, f'{name}.npz')
+    if args.rgb_only:
+        np.savez(filepath, video=video, actions=actions)
+    else:
+        np.savez(filepath, video=video, actions=actions,
+                 depth_video=depth_frames, proj_matrices=proj_matrices,
+                 mv_matrices=mv_matrices, pos=poss, rot=rots)
 
 def sample_trajectories(n, env, agent, length):
     i = 0
