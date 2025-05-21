@@ -13,8 +13,8 @@ pip install -r requirements.txt
 bash ./install-dmlab.sh
 ```
 
-Based on the script found here, with a few modifications: 
-https://gist.github.com/danijar/ca6ab917188d2e081a8253b3ca5c36d3
+Based on the script found [here](https://gist.github.com/danijar/ca6ab917188d2e081a8253b3ca5c36d3), with a few modifications
+
 
 
 # Collecting
