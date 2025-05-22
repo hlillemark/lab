@@ -1,0 +1,6 @@
+numpy
+pillow
+imageio[ffmpeg]
+scipy
+tqdm
+matplotlib

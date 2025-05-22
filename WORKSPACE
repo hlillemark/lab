@@ -4,6 +4,39 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@//:python_system.bzl", "python_repo")
 
 http_archive(
+    name = "rules_python",
+    sha256 = "9f9f3b300a9264e4c77999312ce663be5dee9a56e361a1f6fe7ec60e1beef9a3",
+    strip_prefix = "rules_python-1.4.1",
+    url = "https://github.com/bazel-contrib/rules_python/releases/download/1.4.1/rules_python-1.4.1.tar.gz",
+)
+
+load("@rules_python//python:repositories.bzl", "py_repositories")
+
+py_repositories()
+
+load("@rules_python//python:repositories.bzl", "python_register_toolchains")
+
+python_register_toolchains(
+    name = "python_3_10",
+    # Available versions are listed in @rules_python//python:versions.bzl.
+    # We recommend using the same version your team is already standardized on.
+    python_version = "3.10",
+)
+
+load("@rules_python//python:pip.bzl", "pip_parse")
+
+pip_parse(
+    name = "pypi",
+    python_interpreter_target = "@python_3_10_host//:python",
+    requirements_lock = "//:requirements.txt",
+)
+
+# Load the starlark macro, which will define your dependencies.
+load("@pypi//:requirements.bzl", "install_deps")
+# Call it to define repos for your requirements.
+install_deps()
+
+http_archive(
     name = "com_google_googletest",
     strip_prefix = "googletest-main",
     urls = ["https://github.com/google/googletest/archive/main.zip"],
