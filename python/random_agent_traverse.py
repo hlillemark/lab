@@ -234,11 +234,17 @@ def sample_trajectory(env, agent, length, name, skip=10):
     poss = []
     rots = []
     actions = []
+    camera_poss = []
+    camera_rots = []
 	
     obs = env.observations()
     maze = Maze(obs['DEBUG.MAZE.LAYOUT'])
     pos = obs['DEBUG.POS.TRANS']
     rot = obs['DEBUG.POS.ROT']
+    
+    # Camera position and rotation 
+    camera_pos = obs['DEBUG.PLAYERS.EYE.POS']
+    camera_rot = obs['DEBUG.PLAYERS.EYE.ROT']
 
     cur_idx = 0
     path = maze.sample_goal_path(pos[0], pos[1])
@@ -247,6 +253,11 @@ def sample_trajectory(env, agent, length, name, skip=10):
         obs = env.observations()
         pos = obs['DEBUG.POS.TRANS']
         rot = obs['DEBUG.POS.ROT']
+        
+        # Camera position and rotation 
+        camera_pos = obs['DEBUG.PLAYERS.EYE.POS']
+        camera_rot = obs['DEBUG.PLAYERS.EYE.ROT']
+        
         if np.linalg.norm(pos[:2] - path[cur_idx]) <= 40:
             cur_idx += 1
             if cur_idx >= len(path):
@@ -268,8 +279,11 @@ def sample_trajectory(env, agent, length, name, skip=10):
             if np.any(np.isnan(rot)):
                 print('ERROR', mv, rot)
 			
+            mv_matrices.append(mv)
             poss.append(pos)
             rots.append(rot)
+            camera_poss.append(camera_pos)
+            camera_rots.append(camera_rot)
         env.step(action, num_steps=4)
 
     video = np.stack(frames, axis=0)
@@ -279,13 +293,17 @@ def sample_trajectory(env, agent, length, name, skip=10):
     mv_matrices = np.array(mv_matrices).astype(np.float32)
     poss = np.array(poss).astype(np.float32)
     rots = np.array(rots).astype(np.float32)
+    camera_poss = np.array(camera_poss).astype(np.float32)
+    camera_rots = np.array(camera_rots).astype(np.float32)
+    
     filepath = osp.join(args.output_dir, f'{name}.npz')
     if args.rgb_only:
         np.savez(filepath, video=video, actions=actions)
     else:
         np.savez(filepath, video=video, actions=actions,
                  depth_video=depth_frames, proj_matrices=proj_matrices,
-                 mv_matrices=mv_matrices, pos=poss, rot=rots)
+                 mv_matrices=mv_matrices, pos=poss, rot=rots,
+                 camera_pos=camera_poss, camera_rot=camera_rots)
 
 def sample_trajectories(n, env, agent, length):
     i = 0
@@ -308,7 +326,7 @@ def run(length, width, height, fps, level):
   os.makedirs(args.output_dir, exist_ok=True)
 
   env = deepmind_lab.Lab(level, ['RGB_INTERLEAVED', 'DEPTH', 'PROJECTION_MATRIX', 'MODELVIEW_MATRIX',
-                                 'DEBUG.POS.TRANS', 'DEBUG.POS.ROT', 'DEBUG.MAZE.LAYOUT'], config=config)
+                                 'DEBUG.POS.TRANS', 'DEBUG.POS.ROT', 'DEBUG.MAZE.LAYOUT', 'DEBUG.PLAYERS.EYE.POS', 'DEBUG.PLAYERS.EYE.ROT'], config=config)
   agent = GoalAgent()
   sample_trajectories(args.n_traj, env, agent, length)
 

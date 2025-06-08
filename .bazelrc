@@ -1,0 +1,3 @@
+build --enable_workspace
+build --python_version=PY3
+build --action_env=PYTHON_BIN_PATH=/data/hansen/miniconda3/envs/dmlab-teco/bin/python3
