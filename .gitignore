@@ -1,2 +1,11 @@
 /bazel-*
 *.gif
+.bazelrc
+MODULE.bazel
+MODULE.bazel.lock
+BUILD
+python_system.bzl
+python/__pycache__/utils.cpython-310.pyc
+BUILD
+*.npz
+*.bzl
