@@ -4,6 +4,14 @@ from multiprocessing import Process
 import argparse
 import os
 
+# Unset LD_LIBRARY_PATH if it's present in the environment
+if 'LD_LIBRARY_PATH' in os.environ:
+    del os.environ['LD_LIBRARY_PATH']
+
+# Set LD_PRELOAD, which will be inherited by all child processes
+os.environ['LD_PRELOAD'] = '/usr/lib/x86_64-linux-gnu/libstdc++.so.6'
+
+
 def run_process(proc_id, n_traj, height, width, length, base_output_dir, level_script):
     output_dir = Path(base_output_dir) / str(proc_id)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -50,12 +58,12 @@ def main(n_parallel, total_n_traj, height, width, length, output_dir, level_scri
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n_parallel", type=int, default=8)
-    parser.add_argument("--n_traj", type=int, default=2048)
+    parser.add_argument("--n_parallel", type=int, default=32)
+    parser.add_argument("--n_traj", type=int, default=512)
     parser.add_argument("--height", type=int, default=128)
     parser.add_argument("--width", type=int, default=128)
-    parser.add_argument("--length", type=int, default=1000)
-    parser.add_argument("--output_dir", type=str, default="teco_data")
+    parser.add_argument("--length", type=int, default=128)
+    parser.add_argument("--output_dir", type=str, default="/data/hansen/projects/bh/wm-memory/data/dmlab/cal_stats")
     parser.add_argument("--level_script", type=str, default="demos/random_maze")
     args = parser.parse_args()
 
