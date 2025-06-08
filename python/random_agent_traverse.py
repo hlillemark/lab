@@ -31,7 +31,7 @@ from PIL import Image
 from scipy.spatial.transform import Rotation
 
 import deepmind_lab
-
+from utils import getRawDepth
 
 def _action(*entries):
   return np.array(entries, dtype=np.intc)
@@ -258,7 +258,7 @@ def sample_trajectory(env, agent, length, name, skip=10):
         if t >= skip:
             frames.append(obs['RGB_INTERLEAVED'].copy())
             actions.append(idx)
-            depth_frames.append(obs['DEPTH'].copy())
+            depth_frames.append(getRawDepth(obs['DEPTH'].copy(), obs['PROJECTION_MATRIX'].copy()))
             proj_matrices.append(obs['PROJECTION_MATRIX'].copy())
 
             mv = obs['MODELVIEW_MATRIX'].copy()
