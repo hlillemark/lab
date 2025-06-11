@@ -63,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument("--height", type=int, default=128)
     parser.add_argument("--width", type=int, default=128)
     parser.add_argument("--length", type=int, default=128)
-    parser.add_argument("--output_dir", type=str, default="/data/hansen/projects/bh/wm-memory/data/dmlab/cal_stats")
+    parser.add_argument("--output_dir", type=str, default="/data/hansen/projects/bh/wm-memory/data/dmlab/training")
     parser.add_argument("--level_script", type=str, default="demos/random_maze")
     args = parser.parse_args()
 
